@@ -7,6 +7,7 @@
 
 ## 修订记录
 
+- **R4（2026-09-24，PR #66 后续增强批次，用户洞察：模型实际只从注入快照读记忆、几乎不调 list/expand，命中信号必须能从「使用申报」流入）**：memory add 新增可选 `used` 参数（string[]，单轨与批量 entries 写均可）——收尾写入时申报本轮实际用到的既有记忆的独特子串；解析器 `resolveUsedRefs`（lib/hit-stats.js 纯函数）按 memory→user→key 轨序扫描，某轨恰一条命中 → `bumpHits`，多义/未命中换轨、全轨失败计入 unmatched；单调用内 ref 去重；先写 entries（主流程优先）后处理 used；全程 try/catch 失败隔离。回显双语（N=命中数、M=未匹配数；N>0 显「已记录 N 条」，N=0 且 M>0 显忽略段）。快照收尾写入指引（batchWriteDuty）补申报半句——**golden 第 3 次有意再捕获（最终态）**。语义修订：Q5 决策行由「注入不算命中」修订为「注入不自动计数；模型经 used 主动申报的使用计入」（被替换原文见该行内注记）。测试：tests/used-refs.test.js 7 例（批量/单轨跨轨/未匹配/多义/缺省零副作用/去重/畸形输入失败隔离）。
 - **R3（2026-09-24，PR #66 后续增强批次，用户拍板：主路径=运行时由大模型统一为旧记忆补标；块 5 命中豁免保留为自动过渡层）**：memory 工具新增 `retag` action——按 match 定位单条（语义同 replace），剥旧 `[salience:N]` 盖新级别（`retagEntry`：新 tag 插头部序列末尾，正文逐字不动、`[id:]`/`[summary:]` 原样保留；store 层与 replace 同 drift 守卫 + withLock + 原子写路径）；target 支持矩阵与 add 相同（memory/user/key 有效，project/daily 诚实拒绝——retag 唯一目的就是打 tag，静默忽略会误导）；salience 必填整数 1-3（normalizeSalienceFor 同链 + store 层防御性再校验）。快照写入指引（keyDuty）补「存量补标」一行（审查到期轮分批，每轮 10-20 条至清零）——**golden 第 2 次有意再捕获**（唯一差异段 = keyDuty 补标句）。工具描述补 retag 用法。测试：tests/retag.test.js 6 例（无 tag 补标正文逐字不变/旧 tag 替换/match 不唯一/日志轨拒绝/[id:]+[summary:] 保留/非法值防御 + retagEntry 头部形态矩阵）。
 - **R2（2026-09-24，PR #66 后续增强批次，用户需求）**：摘要模式妥善处理存量旧记忆——新增 `memoryHitExemptDays`（默认 30；0=关闭；校验=非负整数），摘要分支全文条件扩为 `[salience:3]` **或**「hitCount≥1 且 lastAccessed 距今 ≤ 阈值天数」（daysBetween 与 decay.js 同源口径；豁免集由调用方每轨一次 readSidecar 组装、options 传入 renderGlobalTrackInject，无豁免集=现状）。摘要头 i18n（snap.memorySummaryHead/snap.userSummaryHead）补「近期命中的条目保持全文」——**默认 golden 零变化**（摘要头不进 off 模式快照，tests/snapshot-golden.test.js 绿证实）。测试：tests/memory-progressive-disclosure.test.js 增 7 例（新鲜命中/超期/=0 关闭/无侧车/salience:3 恒豁免/off+auto 全量路径不受影响/旋钮校验）。
 - **R1（2026-09-24，PR #66 后续增强批次）**：`snap.keyDuty` 快照注入文本补 salience 半句（用户需求：UI 可见性与引导——让模型在写入指引处直接看到 salience 用法）。变更点：写入指引第 1 步 keyDuty 段追加「核心约定/决策可传 salience:2-3 标注重要性，常规进展不传」；tests/snapshot-golden.test.js 的 GOLDEN_ZH 按有意变更流程再捕获（脚本 agent-out/recapture-golden-uifollowup.mjs，fixture store + 默认 config）。被替换原文（保留供审计）：
@@ -169,7 +170,7 @@
 - [ ] 侧车不进同步 fileset → 命中统计是**设备本地**的，多设备不聚合 — **缺省决策：一期本地**（报告 metadata 预留 deviceId 字段位）；跨设备聚合等真实需求出现再议
 - [ ] salience 由谁打：本批只接受显式传参，不做 LLM 自动打分（A M6 flashbulb 陷阱） — 写入时自动**建议** salience（走 memory_suggest 待确认队列）留待下批评估
 - [ ] 衰减阈值 30/90/180 天是初值，无真实分布校准依据 — 上线后按首个真实报告的分布回看调整（guji「抓完分布后校准」同款纪律）；config 可调已预留
-- [ ] 「注入算不算命中」：快照常驻注入是被动暴露，A M4 明确「集中暴露≠检索练习」 — **缺省决策：不算**，只有显式 list/expand 才计数；若日后数据显示需要注入权重，加配置开关
+- [ ] 「注入算不算命中」：快照常驻注入是被动暴露，A M4 明确「集中暴露≠检索练习」 — **缺省决策（R4 修订，2026-09-24）：注入不自动计数；模型经 used 使用申报主动申报的使用计入**（用户洞察：模型实际只从注入快照读记忆、几乎不调 list/expand，命中信号必须能从「使用申报」流入——add 的 used 参数申报独特子串、恰一条命中即计数；显式 list/expand 照旧计数）。被替换原文：「缺省决策：不算，只有显式 list/expand 才计数；若日后数据显示需要注入权重，加配置开关」
 - [ ] memory-consolidate 技能消费 decay-report.json 的路径约定需要在技能侧跟进（上游 #58 v2 落地后）— 本 spec 只定义报告 JSON 格式契约，技能侧接线不在本批
 - [ ] 语义检索（下批）的缓存失效策略与 dim mismatch 守卫设计必须前置 — guji 实证：dim 不一致时检索静默跳过全部分片、hits 恒空但输出格式合法，是最危险的失效模式
 - [ ] review 联动文案的候选数是否需要区分「全局轨 vs 项目轨」— 一期合并计数即可，快照文案空间有限

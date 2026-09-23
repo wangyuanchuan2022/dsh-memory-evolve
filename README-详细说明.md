@@ -119,6 +119,7 @@
 ### 命中统计（hit-stats 侧车）
 
 - `list`/`expand` 每次真实命中（branch 过滤后返回的条目）自动 +1 计数并更新最近访问时间；快照注入**不计数**。
+- **使用申报（used）**：`memory` 工具 add（单轨与批量 entries 写均可）带可选 `used` 参数（字符串数组）——模型收尾写入时申报本轮实际参考/用到的既有记忆的独特子串；服务端按 memory→user→key 轨序解析，某轨恰一条命中即为该条目 `bumpHits` +1，未匹配/多义的 ref 忽略不报错；全程失败隔离，任何解析异常不影响 add 主流程。语义（spec Q5 R4 修订）：注入不自动计数，模型经 used 主动申报的使用计入。
 - 侧车文件位置：memory/user 轨 `<记忆目录>/hit-stats.json`、key 轨 `projects/<hash>/hit-stats.json`；键 = `track:sha1(条目文本)`。
 - 侧车**不进同步**（同步 fileset 之外）、损坏自动降级为无统计、读写失败绝不影响主流程；记忆 Tab 条目显示命中次数与重要性徽标。
 
