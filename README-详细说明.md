@@ -134,6 +134,12 @@
 - `auto`：条目数 ≤ `memoryFullInjectThreshold`（默认 3）且总字符 ≤ `memoryFullInjectCharLimit`（默认 1500）时全量，否则摘要。
 - 配置入口：「Memory Evolve 设置 → 配置」（或 config.yaml）。
 
+### 存量记忆处理（命中驱动豁免）
+
+- 摘要模式下未标记 salience 的旧条目**不是一刀切摘要**：近期被实际使用过的旧记忆保持全文注入——判定条件 = hitCount ≥ 1 且最近访问距今 ≤ `memoryHitExemptDays` 天（默认 30；0 = 关闭豁免）。
+- 豁免窗口外的旧条目降为一行摘要（显式 `[summary:]` 优先、自动摘要兜底），AI 需要全文时用 `list` 取回。
+- 重要旧条目的长期归宿：用 `replace` 重写补上 `salience:2-3` 标记（进入重要性豁免通道，恒全文），或补显式 `[summary:]` 控制摘要形态。
+
 ## 技能管理器（合并自 dsh-skill-browser）
 
 > ⚠️ **与独立插件 dsh-skill-browser（dsh-skills-manager）冲突**：技能管理功能已整体并入本插件（宿主端 `lib/skills-manager.js` + 记忆 Tab「技能管理」子 Tab，API 前缀沿用 `/skills-manager`）。**不要同时启用两者**——两套 disabled shadow 会对同一技能重复注册、两套 custom-dir provider 会重复扫描。迁移步骤：从 `~/.dsh/config.yaml` 移除 `skills-manager` 的 insert，重启 `dsh web`。

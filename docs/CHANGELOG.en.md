@@ -8,6 +8,7 @@ All version changes for this repository, in reverse chronological order.
 
 ### Added
 
+- **Hit-driven exemption for legacy entries in snapshot tiered injection (memoryHitExemptDays, default 30)**: in summary mode (auto over-threshold / on), old entries without a salience tag are no longer blanket-summarized — old memories with hitCount ≥ 1 and last access within the threshold stay fully injected (daysBetween shares the decay module's date arithmetic; sidecar reads are failure-isolated). `0` disables the exemption; off/auto full-injection paths are unchanged (golden stays byte-identical — the summary-head copy never enters the default snapshot).
 - **Memory-tool usage guidance and snapshot injection notes now teach the full lifecycle**: the tool description gained salience usage (pass `salience:2-3` for durable facts/user conventions/core architecture decisions, omit for routine progress; integer 1-3 clamped automatically), automatic hit counting for `list`/`expand`, and a `decay` action note (on-demand decay-archive candidate report decay-report.json, never deletes anything); the snapshot injection write guidance (key-suggestion clause) gained "pass salience:2-3 for core conventions/decisions, omit for routine progress". The snapshot golden baseline was **intentionally re-captured** (single differing line = the write-guidance keyDuty clause; spec revision record R1).
 
 ### Docs

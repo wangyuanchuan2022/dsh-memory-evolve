@@ -276,6 +276,7 @@ AI 的对话是「一次性」的：换项目、隔几天、开新会话，它�
 - **衰减归档候选（decay）**：memory 工具 `decay` action 按需运行——按「距上次访问天数 > decayThresholds[salience]」筛出归档候选，产出**只读**报告 `<记忆目录>/decay-report.json`，**绝不自动删除任何条目**，供记忆整理（memory-consolidate 技能）或你本人裁决；审查到期提醒会附带当前候选数。`fallbackCount` 字段 = 参与筛选时使用了条目时间戳代理的**全部**条目数（含未进候选的）。
 - **快照分层注入（memoryProgressiveDisclosure）**：`off`（默认）= 全量注入，输出与旧版逐字节一致；`on` = 恒摘要注入（`[salience:3]` 恒全文，其余一行摘要、模型需要全文时用 list 取回）；`auto` = 条目数 ≤ `memoryFullInjectThreshold`（默认 3）且总字符 ≤ `memoryFullInjectCharLimit`（默认 1500）时全量、否则摘要。均可在「Memory Evolve 设置 → 配置」调整。
 - **衰减阈值（decayThresholds）**：`[30, 90, 180]`（按 salience 1/2/3 索引，单位天；单项 0 = 该档永不进候选），config.yaml 或设置页可改。
+- **存量记忆处理**：摘要模式下未标记 salience 的旧条目**不是一刀切摘要**——近期（默认 30 天内，`memoryHitExemptDays` 可调，0=关闭）被实际命中过的旧记忆保持**全文注入**（命中驱动豁免）；窗口外的旧条目降为一行摘要、AI 需要时用 list 取全文。重要旧条目建议用 `replace` 重写补上 `salience:2-3` 或显式 `[summary:]` 摘要。
 
 ---
 

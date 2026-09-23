@@ -7,6 +7,7 @@
 
 ## 修订记录
 
+- **R2（2026-09-24，PR #66 后续增强批次，用户需求）**：摘要模式妥善处理存量旧记忆——新增 `memoryHitExemptDays`（默认 30；0=关闭；校验=非负整数），摘要分支全文条件扩为 `[salience:3]` **或**「hitCount≥1 且 lastAccessed 距今 ≤ 阈值天数」（daysBetween 与 decay.js 同源口径；豁免集由调用方每轨一次 readSidecar 组装、options 传入 renderGlobalTrackInject，无豁免集=现状）。摘要头 i18n（snap.memorySummaryHead/snap.userSummaryHead）补「近期命中的条目保持全文」——**默认 golden 零变化**（摘要头不进 off 模式快照，tests/snapshot-golden.test.js 绿证实）。测试：tests/memory-progressive-disclosure.test.js 增 7 例（新鲜命中/超期/=0 关闭/无侧车/salience:3 恒豁免/off+auto 全量路径不受影响/旋钮校验）。
 - **R1（2026-09-24，PR #66 后续增强批次）**：`snap.keyDuty` 快照注入文本补 salience 半句（用户需求：UI 可见性与引导——让模型在写入指引处直接看到 salience 用法）。变更点：写入指引第 1 步 keyDuty 段追加「核心约定/决策可传 salience:2-3 标注重要性，常规进展不传」；tests/snapshot-golden.test.js 的 GOLDEN_ZH 按有意变更流程再捕获（脚本 agent-out/recapture-golden-uifollowup.mjs，fixture store + 默认 config）。被替换原文（保留供审计）：
   - zh：`本轮出现重要项目事实（长期约定/决策/架构/踩坑）时另向 target=key 提交 1 条建议（用户确认后写入并注入），没有则跳过`
   - en：`when durable project facts appear this turn (long-lived conventions/decisions/architecture/pitfalls), additionally submit one suggestion to target=key (written and injected after user confirmation); skip when there are none`

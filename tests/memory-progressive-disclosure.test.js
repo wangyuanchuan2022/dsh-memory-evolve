@@ -18,7 +18,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { apply, renderSnapshot, resolveConfig, validateRuntimePatch } from '../lib/index.js'
-import { MemoryStore, projectHash } from '../lib/store.js'
+import { MemoryStore, projectHash, todayStamp } from '../lib/store.js'
+import { hitKey } from '../lib/hit-stats.js'
 import { SNAPSHOT_DICT } from '../lib/i18n.js'
 import { buildGoldenFixture, GOLDEN_ZH } from './snapshot-golden.test.js'
 
@@ -163,4 +164,134 @@ test('AC-6.8 新增 i18n key zh/en 成对齐全；新旋钮值校验生效', () 
   assert.equal(resolveConfig({}).memoryProgressiveDisclosure, 'off')
   assert.equal(resolveConfig({}).memoryFullInjectThreshold, 3)
   assert.equal(resolveConfig({}).memoryFullInjectCharLimit, 1500)
+})
+
+// ── 块 5（PR #66 后续增强）：命中驱动的存量记忆豁免 ──
+// 摘要模式（auto 超阈/on）下，未标记 salience 的存量旧条目不应一刀切降为
+// 一行摘要——近期被实际使用过的旧记忆保持全文注入（memoryHitExemptDays，
+// 默认 30；0=关闭）。侧车手写（bumpHits 只会写今天的 lastAccessed，测试
+// 需要 40 天前的超期样本）。
+
+/** n 天前的本地 YYYY-MM-DD（与 store.js todayStamp 同为本地日期口径）。 */
+function daysAgoStamp(n) {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** 手写侧车：{ [hitKey]: {hitCount, lastAccessed} }（记忆根 hit-stats.json）。 */
+function writeSidecar(dir, stats) {
+  writeFileSync(join(dir, 'hit-stats.json'), `${JSON.stringify(stats, null, 2)}\n`)
+}
+
+test('块5-① 新鲜命中豁免：hitCount=1 且 lastAccessed=今天 → on 模式保持全文（memory+user 双轨）', () => {
+  const fx = buildTieredFixture()
+  try {
+    const untagged = '[2026-09-23] 无标记条目第一行\n无标记条目第二行'
+    const userEntry = '[2026-09-19] 用户档案条目第一行\n用户档案条目第二行'
+    writeSidecar(fx.dir, {
+      [hitKey('memory', untagged)]: { hitCount: 1, lastAccessed: todayStamp() },
+      [hitKey('user', userEntry)]: { hitCount: 1, lastAccessed: todayStamp() },
+    })
+    const cfg = resolveConfig({ memoryDir: fx.dir, memoryProgressiveDisclosure: 'on' })
+    const snap = renderSnapshot(cfg, fx.store, fx.agent)
+    // memory 轨：无标记条目因新鲜命中全文豁免（第二行保留=未被摘要化）
+    assert.ok(snap.includes('无标记条目第二行'), 'freshly-hit untracked entry stays full on the memory track')
+    // user 轨同机制
+    assert.ok(snap.includes('用户档案条目第二行'), 'freshly-hit user entry stays full')
+    // 摘要头出现（确认确实运行在摘要模式，豁免是模式内的逐条豁免）
+    assert.ok(snap.includes('摘要模式'))
+    // 逐条对照：同快照内未命中的低档条目仍被摘要（豁免是个体的，不是全轨的）
+    assert.ok(!snap.includes('低档条目第二行'), 'non-exempt entries still summarized in the same snapshot')
+  } finally {
+    fx.cleanup()
+  }
+})
+
+test('块5-② 命中超期：lastAccessed=40 天前 → 被摘要（豁免窗口外）', () => {
+  const fx = buildTieredFixture()
+  try {
+    const explicitEntry = '[2026-09-22] [summary:显式摘要示例] 显式摘要条目第一行\n显式摘要条目第二行'
+    writeSidecar(fx.dir, {
+      [hitKey('memory', explicitEntry)]: { hitCount: 1, lastAccessed: daysAgoStamp(40) },
+    })
+    const cfg = resolveConfig({ memoryDir: fx.dir, memoryProgressiveDisclosure: 'on' })
+    const snap = renderSnapshot(cfg, fx.store, fx.agent)
+    assert.ok(!snap.includes('显式摘要条目第二行'), 'stale-hit entry must be summarized (second line dropped)')
+    assert.ok(snap.includes('显式摘要示例'), 'stale-hit entry falls back to its explicit summary')
+  } finally {
+    fx.cleanup()
+  }
+})
+
+test('块5-③ memoryHitExemptDays=0 关闭豁免：新鲜命中也摘要', () => {
+  const fx = buildTieredFixture()
+  try {
+    const untagged = '[2026-09-23] 无标记条目第一行\n无标记条目第二行'
+    writeSidecar(fx.dir, {
+      [hitKey('memory', untagged)]: { hitCount: 1, lastAccessed: todayStamp() },
+    })
+    const cfg = resolveConfig({ memoryDir: fx.dir, memoryProgressiveDisclosure: 'on', memoryHitExemptDays: 0 })
+    const snap = renderSnapshot(cfg, fx.store, fx.agent)
+    assert.ok(!snap.includes('无标记条目第二行'), 'exempt disabled (0) → fresh hits are summarized too')
+  } finally {
+    fx.cleanup()
+  }
+})
+
+test('块5-④ 无侧车文件 = 无豁免（行为与块 5 之前一致）', () => {
+  const fx = buildTieredFixture()
+  try {
+    const cfg = resolveConfig({ memoryDir: fx.dir, memoryProgressiveDisclosure: 'on' })
+    const snap = renderSnapshot(cfg, fx.store, fx.agent)
+    assert.ok(!snap.includes('无标记条目第二行'), 'no sidecar → no exemption')
+    // 摘要行形态：`- [8位短id] 摘要`（extractEntryId / legacyIdFor）
+    assert.ok(/\n- \[[0-9a-f]{8}\] /.test(snap), 'summary line form preserved')
+  } finally {
+    fx.cleanup()
+  }
+})
+
+test('块5-⑤ salience:3 恒全文豁免不依赖侧车（重要性豁免与命中豁免双通道并存）', () => {
+  const fx = buildTieredFixture()
+  try {
+    // 无任何侧车：高档条目两行仍然全文（AC-3.2 语义在块 5 后保持）
+    const cfg = resolveConfig({ memoryDir: fx.dir, memoryProgressiveDisclosure: 'on' })
+    const snap = renderSnapshot(cfg, fx.store, fx.agent)
+    assert.ok(snap.includes('高档条目全文第一行') && snap.includes('高档条目全文第二行'),
+      'salience:3 stays full without any hit record')
+  } finally {
+    fx.cleanup()
+  }
+})
+
+test('块5-⑥ off / auto 全量路径完全不受影响：带侧车的 golden fixture 下 off 仍逐字节同基线', () => {
+  const fx = buildGoldenFixture()
+  try {
+    // 侧车给 golden fixture 的部分条目命中（含今天的新鲜命中）
+    const stats = {}
+    for (const entry of [
+      '[2026-09-20] 纯时间戳条目（无任何附加标记）',
+      '[2026-09-22] [summary:显式摘要示例] 带摘要标记的条目，正文第一行',
+    ]) {
+      stats[hitKey('memory', entry)] = { hitCount: 1, lastAccessed: todayStamp() }
+    }
+    writeSidecar(fx.dir, stats)
+    // off：全量路径，豁免集不参与（构建了也不改变输出）
+    const off = renderSnapshot(fx.config, fx.store, fx.agent)
+    assert.equal(off, GOLDEN_ZH, 'off path with sidecar present stays byte-identical to golden')
+    // auto 未超阈（golden fixture 5 条 ≤ 大阈值）：全量路径同样逐字节同 off
+    const auto = renderSnapshot({ ...fx.config, memoryProgressiveDisclosure: 'auto', memoryFullInjectThreshold: 50, memoryFullInjectCharLimit: 999999 }, fx.store, fx.agent)
+    assert.equal(auto, GOLDEN_ZH, 'auto under thresholds with sidecar present stays byte-identical to golden')
+  } finally {
+    fx.cleanup()
+  }
+})
+
+test('块5-⑦ 旋钮校验与默认值：memoryHitExemptDays 非负整数（0=关），默认 30', () => {
+  assert.throws(() => validateRuntimePatch('memoryHitExemptDays', -1), /memoryHitExemptDays/)
+  assert.throws(() => validateRuntimePatch('memoryHitExemptDays', 1.5), /memoryHitExemptDays/)
+  assert.doesNotThrow(() => validateRuntimePatch('memoryHitExemptDays', 0))
+  assert.doesNotThrow(() => validateRuntimePatch('memoryHitExemptDays', 30))
+  assert.equal(resolveConfig({}).memoryHitExemptDays, 30)
 })
