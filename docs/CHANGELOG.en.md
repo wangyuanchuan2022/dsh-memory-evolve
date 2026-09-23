@@ -4,6 +4,16 @@ All version changes for this repository, in reverse chronological order.
 
 > [中文](CHANGELOG.md)
 
+## 2026-09-24
+
+### Added
+
+- **Memory-tool usage guidance and snapshot injection notes now teach the full lifecycle**: the tool description gained salience usage (pass `salience:2-3` for durable facts/user conventions/core architecture decisions, omit for routine progress; integer 1-3 clamped automatically), automatic hit counting for `list`/`expand`, and a `decay` action note (on-demand decay-archive candidate report decay-report.json, never deletes anything); the snapshot injection write guidance (key-suggestion clause) gained "pass salience:2-3 for core conventions/decisions, omit for routine progress". The snapshot golden baseline was **intentionally re-captured** (single differing line = the write-guidance keyDuty clause; spec revision record R1).
+
+### Docs
+
+- All three READMEs (usage guide / detailed guide / English guide) gained a "Memory Lifecycle" section: salience parameter usage, hit-statistics mechanics (list/expand counting, hit-stats sidecar locations, excluded from sync), the decay action and report contract (including fallbackCount semantics), the memoryProgressiveDisclosure three states with the two threshold settings, and the decayThresholds configuration.
+
 ## 2026-09-15
 
 ### Fixed

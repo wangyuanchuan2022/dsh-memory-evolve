@@ -4,6 +4,16 @@
 
 > [English](CHANGELOG.en.md)
 
+## 2026-09-24
+
+### 新增
+
+- **memory 工具使用指引与快照注入说明补全生命周期指引**：工具描述新增 salience 用法（长期重要事实/用户约定/核心架构决策传 `salience:2-3`，常规进展不传；整数 1-3 自动钳制）、`list`/`expand` 命中自动计数说明与 `decay` action 说明（按需产出归档候选报告 decay-report.json，绝不自动删除）；快照注入的写入指引（key 建议处）补「核心约定/决策可传 salience:2-3 标注重要性，常规进展不传」。快照黄金基线按**有意变更**流程再捕获（唯一差异行 = 写入指引 keyDuty 段，spec 修订记录 R1）。
+
+### 文档
+
+- 三份 README（使用指南 / 详细说明 / 英文指南）新增「记忆生命周期」小节：salience 参数用法、命中统计机制（list/expand 计数、hit-stats 侧车位置、不进同步）、decay action 与报告契约（含 fallbackCount 语义）、memoryProgressiveDisclosure 三态与两阈值配置、decayThresholds 配置。
+
 ## 2026-09-15
 
 ### 修复
