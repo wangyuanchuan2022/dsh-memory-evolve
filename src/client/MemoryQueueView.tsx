@@ -131,6 +131,12 @@ interface RuntimeConfig {
   keyFullInjectThreshold: number
   /** auto 模式下字符数阈值：总字符数 ≤ 此值时全量注入。 */
   keyFullInjectCharLimit: number
+  /** memory/user 轨渐进式披露模式（与 key 轨同机制；默认 off=全量注入零变化）。 */
+  memoryProgressiveDisclosure: 'auto' | 'off' | 'on'
+  /** memory 轨 auto 模式条目数阈值。 */
+  memoryFullInjectThreshold: number
+  /** memory 轨 auto 模式字符数阈值。 */
+  memoryFullInjectCharLimit: number
   /** 记忆写入看门狗（用户拍板 2026-09-04：默认关——根源是模型指令遵循
    *  能力，强模型不需要；打开后连续 N 轮未写 daily/project 快照会置顶提醒）。 */
   perTurnWriteGuard: boolean
@@ -289,6 +295,9 @@ export function MemoryQueueView(props: MemoryQueueViewProps): JSX.Element {
       keyProgressiveDisclosure: draft.keyProgressiveDisclosure,
       keyFullInjectThreshold: draft.keyFullInjectThreshold,
       keyFullInjectCharLimit: draft.keyFullInjectCharLimit,
+      memoryProgressiveDisclosure: draft.memoryProgressiveDisclosure,
+      memoryFullInjectThreshold: draft.memoryFullInjectThreshold,
+      memoryFullInjectCharLimit: draft.memoryFullInjectCharLimit,
     }
     void api<{ config: RuntimeConfig }>('/api/config', {
       method: 'POST',
@@ -801,6 +810,59 @@ export function MemoryQueueView(props: MemoryQueueViewProps): JSX.Element {
                       // 正整数校验——clamp 到最小值 100。
                       const n = Number(event.target.value)
                       patchDraft({ keyFullInjectCharLimit: Number.isFinite(n) && n >= 100 ? Math.floor(n) : 100 })
+                    }}
+                  />
+                </label>
+              </div>
+              {/* memory/user 轨渐进式披露配置组（PR #66 后续增强，块 3）：
+                  与 key 轨同机制——off（默认）= 全量注入逐字节同旧版。 */}
+              <div className="me-group">
+                <label className="me-field">
+                  <span className="me-field-label">
+                    {t('panel.config.memoryProgressiveDisclosure')}
+                    <em className="me-field-hint">{t('panel.config.memoryProgressiveDisclosure.hint')}</em>
+                  </span>
+                  <select
+                    className="me-todo-select"
+                    value={draft.memoryProgressiveDisclosure ?? 'off'}
+                    onChange={(event) => patchDraft({ memoryProgressiveDisclosure: event.target.value })}
+                  >
+                    <option value="auto">{t('panel.config.memoryProgressiveDisclosure.auto')}</option>
+                    <option value="off">{t('panel.config.memoryProgressiveDisclosure.off')}</option>
+                    <option value="on">{t('panel.config.memoryProgressiveDisclosure.on')}</option>
+                  </select>
+                </label>
+                <label className="me-field">
+                  <span className="me-field-label">
+                    {t('panel.config.memoryFullInjectThreshold')}
+                    <em className="me-field-hint">{t('panel.config.memoryFullInjectThreshold.hint')}</em>
+                  </span>
+                  <input
+                    type="number"
+                    className="me-input"
+                    min={1}
+                    value={draft.memoryFullInjectThreshold ?? 3}
+                    onChange={(event) => {
+                      // 与 keyFullInjectThreshold 同款 clamp：清空/小数/0 → 1
+                      const n = Number(event.target.value)
+                      patchDraft({ memoryFullInjectThreshold: Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1 })
+                    }}
+                  />
+                </label>
+                <label className="me-field">
+                  <span className="me-field-label">
+                    {t('panel.config.memoryFullInjectCharLimit')}
+                    <em className="me-field-hint">{t('panel.config.memoryFullInjectCharLimit.hint')}</em>
+                  </span>
+                  <input
+                    type="number"
+                    className="me-input"
+                    min={100}
+                    value={draft.memoryFullInjectCharLimit ?? 1500}
+                    onChange={(event) => {
+                      // 与 keyFullInjectCharLimit 同款 clamp：清空/小数 → 100
+                      const n = Number(event.target.value)
+                      patchDraft({ memoryFullInjectCharLimit: Number.isFinite(n) && n >= 100 ? Math.floor(n) : 100 })
                     }}
                   />
                 </label>
