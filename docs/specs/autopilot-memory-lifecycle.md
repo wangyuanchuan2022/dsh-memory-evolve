@@ -5,6 +5,13 @@
 - 代码基线：dsh-memory-evolve @ c337dc1（git log 实测核对）；零 npm 依赖（package.json 无 deps 字段，实测核对）
 - 下游：planner 出 3-6 步工作计划 → executor 实施。本 spec 的验收标准每条均可判定（对应测试断言或明确人工验证步骤）。
 
+## 修订记录
+
+- **R1（2026-09-24，PR #66 后续增强批次）**：`snap.keyDuty` 快照注入文本补 salience 半句（用户需求：UI 可见性与引导——让模型在写入指引处直接看到 salience 用法）。变更点：写入指引第 1 步 keyDuty 段追加「核心约定/决策可传 salience:2-3 标注重要性，常规进展不传」；tests/snapshot-golden.test.js 的 GOLDEN_ZH 按有意变更流程再捕获（脚本 agent-out/recapture-golden-uifollowup.mjs，fixture store + 默认 config）。被替换原文（保留供审计）：
+  - zh：`本轮出现重要项目事实（长期约定/决策/架构/踩坑）时另向 target=key 提交 1 条建议（用户确认后写入并注入），没有则跳过`
+  - en：`when durable project facts appear this turn (long-lived conventions/decisions/architecture/pitfalls), additionally submit one suggestion to target=key (written and injected after user confirmation); skip when there are none`
+  - 性质：纯文案增量，机制行为零变化；AC-3.1（off 逐字节一致）在新基线下仍成立（差异仅此一处文本）。
+
 ---
 
 ## 一、目标（一句话）
