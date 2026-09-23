@@ -336,6 +336,23 @@ test('key 轨无 cwd 时跳过不报错（buildDecayReport 兼容无 agent 调�
   }
 })
 
+test('错误传播路径注入必红：主轨损坏形态（目录占位）→ decay 响亮失败回显 decayFailed（覆盖 readTrackEntries 重抛与 handler catch 兜底）', async () => {
+  const dir = tempDir()
+  try {
+    setupStore(dir)
+    const tool = memoryTool(dir)
+    // 注入：MEMORY.md 占成目录 → readFileSync EISDIR（非 ENOENT）→
+    // lib/decay.js readTrackEntries 的 throw error 行被触发（100% 覆盖目标），
+    // 一路传到 index.js decay 分支的 catch（msg.decayFailed 回显）。
+    mkdirSync(join(dir, 'MEMORY.md'))
+    const out = await tool.execute({ action: 'decay', target: 'memory' }, DECAY_EXEC)
+    assert.equal(out.ok, false, '损坏形态下 decay 响亮失败（不静默）')
+    assert.ok(out.message.includes('衰减报告生成失败'), `实得: ${out.message}`)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('readDecayCandidateCount 降级口径：缺失/损坏/形态不符一律 0（联动不注入的前提）', () => {
   const dir = tempDir()
   try {
