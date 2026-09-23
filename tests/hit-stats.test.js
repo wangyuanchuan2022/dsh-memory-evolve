@@ -155,6 +155,27 @@ test('AC-1.4 变体: 侧车为合法 JSON 但非对象（数组/null/标量）�
   }
 })
 
+test('F-2: readSidecar 危险键收口——__proto__/constructor 自有键删除、正常键不受影响', () => {
+  // 注入必红对照：删掉 readSidecar 里的两行 delete 后本用例必红。
+  // 手写原始字符串构造该形态（JSON.stringify 不会产出 __proto__ 自有键；
+  // JSON.parse 按 V8 语义把 __proto__ 解析为普通自有数据属性、不设原型）。
+  const dir = tempDir()
+  try {
+    writeFileSync(
+      join(dir, HIT_STATS_FILE),
+      '{"__proto__":{"polluted":1},"constructor":{"x":1},"memory:abc":{"hitCount":1,"lastAccessed":"2026-09-23"}}',
+    )
+    const stats = readSidecar(dir)
+    assert.equal(Object.prototype.hasOwnProperty.call(stats, '__proto__'), false, '__proto__ own key must be stripped (F-2)')
+    assert.equal(Object.prototype.hasOwnProperty.call(stats, 'constructor'), false, 'constructor own key must be stripped (F-2)')
+    // 收口不误伤：正常受限键形数据原样可用
+    assert.equal(stats['memory:abc'].hitCount, 1)
+    assert.equal(stats['memory:abc'].lastAccessed, '2026-09-23')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('原子性: 残留 .tmp 文件存在时读写不受影响', () => {
   const dir = tempDir()
   try {

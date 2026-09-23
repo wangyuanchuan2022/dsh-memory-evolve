@@ -314,13 +314,18 @@ test('decay 工具有候选回显：候选数入 message + total；报告文件�
   }
 })
 
-test('daysBetween 日期工具：口径与边界（负值/非法/同日）', () => {
+test('daysBetween 日期工具：口径与边界（负值/非法/同日/日历非法日期）', () => {
   assert.equal(daysBetween('2026-08-01', '2026-09-23'), 53)
   assert.equal(daysBetween('2026-09-23', '2026-09-23'), 0, '同日 = 0 天')
   assert.equal(daysBetween('2026-09-24', '2026-09-23'), -1, '未来日期 = 负数（恒不候选）')
   assert.equal(daysBetween('garbage', '2026-09-23'), null, '非法日期 = null')
   assert.equal(daysBetween('2026-8-1', '2026-09-23'), null, '非零填充格式不接受（侧车口径为 todayStamp）')
   assert.equal(daysBetween(null, '2026-09-23'), null)
+  // P2-3 修复：日历非法日期——Date.UTC 对越界月/日自动进位（2026-13-45 →
+  // 2027-02-14）产出貌似合理的天数误导候选筛选；往返校验后按解析失败返回 null。
+  assert.equal(daysBetween('2026-13-45', '2026-09-23'), null, '越界月/日（Date.UTC 进位形态）= null')
+  assert.equal(daysBetween('2026-02-30', '2026-09-23'), null, '2 月 30 日不存在 = null')
+  assert.equal(daysBetween('2026-09-23', '2026-00-10'), null, 'to 侧非法同样 null')
 })
 
 test('key 轨无 cwd 时跳过不报错（buildDecayReport 兼容无 agent 调用）', () => {
