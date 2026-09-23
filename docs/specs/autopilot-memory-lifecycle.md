@@ -1,7 +1,7 @@
 # Spec · autopilot-memory-lifecycle（记忆生命周期元数据层）
 
 - 产出：Analyst（dsh-agents，HIGH 档 glm-pro/glm-5.3）· 2026-09-23
-- 素材：A-bio-mechanisms.md / B-github-landscape.md / C-dsh-current-state.md（D:\tools\deepsek_harness\bio-memory-research\，全文已读）
+- 素材：A-bio-mechanisms.md / B-github-landscape.md / C-dsh-current-state.md（<工作区>/bio-memory-research/，全文已读）
 - 代码基线：dsh-memory-evolve @ c337dc1（git log 实测核对）；零 npm 依赖（package.json 无 deps 字段，实测核对）
 - 下游：planner 出 3-6 步工作计划 → executor 实施。本 spec 的验收标准每条均可判定（对应测试断言或明确人工验证步骤）。
 

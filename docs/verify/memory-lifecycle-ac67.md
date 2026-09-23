@@ -24,7 +24,7 @@
 
 | 项 | 结果 | 脚本 |
 |---|---|---|
-| 三轨读取 + decay 全链路 + 快照双模式 | `memory=161 user=32`；`candidates=0 fallback=193`；默认快照 **78664 字符与评审时点逐位一致**、无 `[salience:` 泄漏；auto 19115 字符 | `node agent-out/rev-realrun.mjs C:\Users\ycwan\.dsh\memories` → REALRUN PASS |
+| 三轨读取 + decay 全链路 + 快照双模式 | `memory=161 user=32`；`candidates=0 fallback=193`；默认快照 **78664 字符与评审时点逐位一致**、无 `[salience:` 泄漏；auto 19115 字符 | `node agent-out/rev-realrun.mjs <DSH 记忆目录>` → REALRUN PASS |
 | COI 通道（P2-1 修复面） | buildMemoryContext 三轨全开 92074 字符 / memory-only 72242 / user-only 7846，**无 `[salience:` 泄漏**（修复前该通道原样注入 tag） | `node agent-out/fixround-realrun-coi.mjs` → COI-REALRUN PASS |
 
 说明：rev-realrun 的 key=0 因其 agent.cwd 指向仓库目录（该项目无 key 记忆），key 轨全链路由 7 套单测覆盖（store-salience/hit-stats-backfill 的 key 队列路径）。
@@ -76,21 +76,21 @@
 
 ```pwsh
 # 覆盖率采集（dsh-memory-evolve 目录下）
-$env:NODE_V8_COVERAGE = 'D:\tools\deepsek_harness\agent-out\fixround-cov-raw'
+$env:NODE_V8_COVERAGE = '<工作区>/agent-out/fixround-cov-raw'
 node tests/store-salience.test.js; node tests/decay.test.js; node tests/hit-stats.test.js
 node tests/hit-stats-backfill.test.js; node tests/memory-progressive-disclosure.test.js
 node tests/review-decay-link.test.js; node tests/snapshot-golden.test.js
 Remove-Item Env:NODE_V8_COVERAGE
 # 改动区核对（期望输出末行 REGIONS-ALL-FULL-COVERED）
-node D:\tools\deepsek_harness\agent-out\fixround-cov-regions.mjs D:\tools\deepsek_harness\agent-out\fixround-cov-raw
+node <工作区>/agent-out/fixround-cov-regions.mjs <工作区>/agent-out/fixround-cov-raw
 # 真实输入全链路（只读副本，绝不写回原目录）
-node D:\tools\deepsek_harness\agent-out\rev-realrun.mjs C:\Users\ycwan\.dsh\memories
-node D:\tools\deepsek_harness\agent-out\fixround-realrun-coi.mjs
+node <工作区>/agent-out/rev-realrun.mjs <DSH 记忆目录>
+node <工作区>/agent-out/fixround-realrun-coi.mjs
 ```
 
 ---
 
-## 三、证据脚本索引（均在 D:\tools\deepsek_harness\agent-out\，不入库）
+## 三、证据脚本索引（均在 <工作区>/agent-out/，不入库）
 
 | 脚本 | 用途 |
 |---|---|
