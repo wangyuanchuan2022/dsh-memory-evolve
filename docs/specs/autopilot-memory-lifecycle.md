@@ -7,6 +7,7 @@
 
 ## 修订记录
 
+- **R3（2026-09-24，PR #66 后续增强批次，用户拍板：主路径=运行时由大模型统一为旧记忆补标；块 5 命中豁免保留为自动过渡层）**：memory 工具新增 `retag` action——按 match 定位单条（语义同 replace），剥旧 `[salience:N]` 盖新级别（`retagEntry`：新 tag 插头部序列末尾，正文逐字不动、`[id:]`/`[summary:]` 原样保留；store 层与 replace 同 drift 守卫 + withLock + 原子写路径）；target 支持矩阵与 add 相同（memory/user/key 有效，project/daily 诚实拒绝——retag 唯一目的就是打 tag，静默忽略会误导）；salience 必填整数 1-3（normalizeSalienceFor 同链 + store 层防御性再校验）。快照写入指引（keyDuty）补「存量补标」一行（审查到期轮分批，每轮 10-20 条至清零）——**golden 第 2 次有意再捕获**（唯一差异段 = keyDuty 补标句）。工具描述补 retag 用法。测试：tests/retag.test.js 6 例（无 tag 补标正文逐字不变/旧 tag 替换/match 不唯一/日志轨拒绝/[id:]+[summary:] 保留/非法值防御 + retagEntry 头部形态矩阵）。
 - **R2（2026-09-24，PR #66 后续增强批次，用户需求）**：摘要模式妥善处理存量旧记忆——新增 `memoryHitExemptDays`（默认 30；0=关闭；校验=非负整数），摘要分支全文条件扩为 `[salience:3]` **或**「hitCount≥1 且 lastAccessed 距今 ≤ 阈值天数」（daysBetween 与 decay.js 同源口径；豁免集由调用方每轨一次 readSidecar 组装、options 传入 renderGlobalTrackInject，无豁免集=现状）。摘要头 i18n（snap.memorySummaryHead/snap.userSummaryHead）补「近期命中的条目保持全文」——**默认 golden 零变化**（摘要头不进 off 模式快照，tests/snapshot-golden.test.js 绿证实）。测试：tests/memory-progressive-disclosure.test.js 增 7 例（新鲜命中/超期/=0 关闭/无侧车/salience:3 恒豁免/off+auto 全量路径不受影响/旋钮校验）。
 - **R1（2026-09-24，PR #66 后续增强批次）**：`snap.keyDuty` 快照注入文本补 salience 半句（用户需求：UI 可见性与引导——让模型在写入指引处直接看到 salience 用法）。变更点：写入指引第 1 步 keyDuty 段追加「核心约定/决策可传 salience:2-3 标注重要性，常规进展不传」；tests/snapshot-golden.test.js 的 GOLDEN_ZH 按有意变更流程再捕获（脚本 agent-out/recapture-golden-uifollowup.mjs，fixture store + 默认 config）。被替换原文（保留供审计）：
   - zh：`本轮出现重要项目事实（长期约定/决策/架构/踩坑）时另向 target=key 提交 1 条建议（用户确认后写入并注入），没有则跳过`

@@ -112,6 +112,7 @@
 ### 条目重要性 `[salience:N]`
 
 - **写入时**：`memory` 工具 `add`/`replace` 传可选 `salience` 参数（整数 1-3：1=低 2=中 3=高，越界自动钳制；仅 memory/user/key 三轨生效，project/daily 日志轨忽略并提示）。语义：长期重要事实/用户约定/核心架构决策传 `salience:2-3`，常规进展不传。
+- **存量补标（retag action）**：旧条目缺标记时，模型按 match 定位单条重打级别（正文逐字不动、`[id:]`/`[summary:]` 原样保留；match 不唯一/未命中的错误口径与 replace 相同）。**运行时统一补标工作流**：在记忆审查到期轮分批处理（每轮 10-20 条至清零）；补标后衰减阈值随之按新级别生效。
 - 条目头生成 `[salience:N]` tag（与 `[summary:]`/`[branch:]` 同款 head token，`replace` 编辑时原样保留进 head）。
 - 带 `[salience:3]` 的条目在快照摘要模式下**恒全文注入**（重要性豁免）。
 
