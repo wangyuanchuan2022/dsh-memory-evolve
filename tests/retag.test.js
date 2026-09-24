@@ -103,6 +103,24 @@ test('⑤[id:] 与 [summary:] 原样保留（tag-only 重写，不换生命周�
   }
 })
 
+test('⑦工具层静态契约：retag 成功回显不得携带 output schema 未声明的 entry 字段', () => {
+  // 背景（2026-09-24 生产实证）：store.retag 成功返回含 entry（供工具层取
+  // 短 id），若原样透传，宿主对工具输出的 additionalProperties:false 校验会
+  // 整单拒绝（报 value.entry is not a declared property）——写盘已发生但模型
+  // 只见报错。假宿主不校验输出 schema，只有生产宿主能抓，故用静态源码契约
+  // 锁住：retag case 块必须在 break 前 delete result.entry。
+  const src = readFileSync(join(import.meta.dirname, '..', 'lib', 'index.js'), 'utf8')
+  const start = src.indexOf("case 'retag':")
+  assert.notEqual(start, -1, 'retag case 未找到')
+  const end = src.indexOf('break', src.indexOf('delete result.entry', start) === -1 ? start : src.indexOf('delete result.entry', start))
+  const block = src.slice(start, end + 'break'.length)
+  assert.match(block, /delete result\.entry/, 'retag 块必须 delete result.entry（宿主 output schema additionalProperties:false）')
+  // delete 必须在 message 构造之后（先用 entry 取短 id，再删）
+  const msgIdx = block.indexOf('msg.retagDone')
+  const delIdx = block.indexOf('delete result.entry')
+  assert.ok(msgIdx !== -1 && delIdx > msgIdx, 'delete result.entry 应在 msg.retagDone 构造之后')
+})
+
 test('⑥store 层 salience 非法值防御 + retagEntry 头部形态矩阵（≥3 元素）', () => {
   const fx = setup('[2026-09-20] 某条目\n')
   try {
