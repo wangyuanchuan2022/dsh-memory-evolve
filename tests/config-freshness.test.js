@@ -76,7 +76,8 @@ test('功能验证：Web 面板改 keyProgressiveDisclosure → 新会话快照�
   await route.handler({
     method: 'POST',
     url: '/memory-evolve/api/config',
-    headers: { 'content-type': 'application/json' },
+    // 写守卫（审计批次 2）：同源 POST 需要 Origin 与 Host 一致
+    headers: { 'content-type': 'application/json', origin: 'http://127.0.0.1:3080', host: '127.0.0.1:3080' },
     [Symbol.asyncIterator]: bodyStream,
   }, res)
   assert.ok(res.body.includes('"keyProgressiveDisclosure":"on"'), 'config POST accepted: ' + res.body.slice(0, 120))
