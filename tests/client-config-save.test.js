@@ -51,6 +51,9 @@ const PANEL_KEYS = [
   'keyProgressiveDisclosure',
   'keyFullInjectThreshold',
   'keyFullInjectCharLimit',
+  'memoryProgressiveDisclosure',
+  'memoryFullInjectThreshold',
+  'memoryFullInjectCharLimit',
 ]
 
 /** 截取 saveConfig 里 `const patch = { ... }` 那一段。 */
